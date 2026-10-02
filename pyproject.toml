@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-guard"
+version = "0.1.0"
+description = "Privacy-first policy checks for Python agents"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+authors = [{name = "Agent Guard contributors"}]
+dependencies = ["pydantic>=2.12.5,<3"]
+
+[project.optional-dependencies]
+pii = ["presidio-analyzer==2.2.364", "spacy>=3.8,<3.9", "tldextract>=5,<6"]
+jev = ["httpx>=0.28,<0.29", "anyio>=4.8,<5"]
+langchain = ["langchain==1.4.2", "langchain-core==1.6.4"]
+langgraph = ["langgraph==1.2.12", "langchain-core==1.6.4"]
+microsoft = ["agent-framework-core==1.19.0"]
+all = [
+  "presidio-analyzer==2.2.364", "spacy>=3.8,<3.9", "tldextract>=5,<6",
+  "httpx>=0.28,<0.29", "anyio>=4.8,<5",
+  "langchain==1.4.2", "langchain-core==1.6.4", "langgraph==1.2.12",
+  "agent-framework-core==1.19.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<9", "pytest-asyncio>=1,<2", "hypothesis>=6,<7", "ruff>=0.13,<1", "mypy>=1.18,<2", "build>=1,<2", "twine>=7,<8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_guard"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/agent_guard",
+  "/tests",
+  "/examples",
+  "/docs/compatibility.md",
+  "/docs/third_party_notices.md",
+  "/README.md",
+  "/LICENSE",
+  "/CONTRIBUTING.md",
+  "/RELEASE_NOTES.md",
+  "/pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["agent_guard"]
+strict = true
