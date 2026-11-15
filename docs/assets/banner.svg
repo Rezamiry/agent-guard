@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" role="img" aria-labelledby="t d">
+  <title id="t">Agent Guard</title>
+  <desc id="d">Agent Guard: privacy-first policy checks for Python agents</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="sh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" rx="20" fill="url(#bg)"/>
+  <g opacity=".07" stroke="#fff">
+    <path d="M0 60H1200M0 120H1200M0 180H1200M0 240H1200"/>
+    <path d="M100 0V300M300 0V300M500 0V300M700 0V300M900 0V300M1100 0V300"/>
+  </g>
+  <g transform="translate(110 70)">
+    <path d="M70 0 L140 26 V84 C140 128 108 160 70 176 C32 160 0 128 0 84 V26 Z"
+          fill="none" stroke="url(#sh)" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M38 86 L62 110 L104 62" fill="none" stroke="url(#sh)" stroke-width="12"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="300" y="150" fill="#fff" font-family="Inter,Segoe UI,Helvetica,Arial,sans-serif"
+        font-size="76" font-weight="700" letter-spacing="-1">Agent Guard</text>
+  <text x="304" y="200" fill="#9fb3d1" font-family="Inter,Segoe UI,Helvetica,Arial,sans-serif"
+        font-size="28">Privacy-first policy checks for Python agents</text>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18" fill="#34d399">
+    <text x="304" y="244">input  ▸  model  ▸  output   — checked locally, blocked before it leaves</text>
+  </g>
+</svg>

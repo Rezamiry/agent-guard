@@ -1,9 +1,20 @@
 # Contributing to Agent Guard
 
-This project is preparing an open source release. The proposed project license is
-Apache-2.0; maintainer acceptance and the dependency/model redistribution review are
-release gates. Until those gates are recorded, do not publish a package or copy the
-separately provisioned PII model into this repository or a distribution.
+Thanks for your interest. Agent Guard is released under the [Apache License 2.0](LICENSE); by
+contributing you agree your contribution is licensed the same way.
+
+Do not copy the separately provisioned spaCy PII model into this repository or a distribution.
+Package publishing is not set up yet; the release gates are tracked in
+[`docs/release-evidence.md`](docs/release-evidence.md).
+
+## Setup
+
+```bash
+uv venv .venv --python 3.12
+uv sync --locked --python .venv/bin/python --all-extras --group dev
+uv pip install --python .venv/bin/python \
+  https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+```
 
 ## Changes
 

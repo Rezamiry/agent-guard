@@ -1,67 +1,213 @@
-# Agent Guard
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Agent Guard: privacy-first policy checks for Python agents" width="100%">
+</p>
 
-Agent Guard is an in-development Python SDK for local PII inspection and configurable agent
-input/output policy decisions. The v1 behavior and limits are defined in
-`specs/001-agent-guard/spec.md`; the current package is not ready for production use.
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
+  <img alt="Python 3.11 | 3.12" src="https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white">
+  <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-orange.svg">
+  <img alt="Typed: mypy strict" src="https://img.shields.io/badge/typed-mypy%20strict-2a6db2.svg">
+  <img alt="Code style: ruff" src="https://img.shields.io/badge/code%20style-ruff-261230.svg">
+  <img alt="Tests: passing" src="https://img.shields.io/badge/tests-passing-brightgreen.svg">
+</p>
 
-Use the project virtual environment for development:
+<p align="center">
+  <img alt="LangChain" src="https://img.shields.io/badge/LangChain-supported-1C3C3C?logo=langchain&logoColor=white">
+  <img alt="LangGraph" src="https://img.shields.io/badge/LangGraph-supported-1C3C3C">
+  <img alt="Microsoft Agent Framework" src="https://img.shields.io/badge/Microsoft%20Agent%20Framework-supported-5E5E5E?logo=microsoft&logoColor=white">
+  <img alt="Local PII: Presidio + spaCy" src="https://img.shields.io/badge/PII-Presidio%20%2B%20spaCy-0A7E5A">
+  <img alt="Privacy first" src="https://img.shields.io/badge/privacy-local--first-0A7E5A">
+</p>
+
+**Agent Guard** checks what goes into and comes out of your Python agent. It inspects the text for
+personal data **on your machine**, applies a policy you declare, and **blocks** the request or
+answer when the policy says so. Optional semantic checks (prompt injection, groundedness,
+relevance) run through a separately configured evaluator, only after the local PII check passes.
+
+> **Status: alpha (0.1.0, unreleased).** The API and compatibility ranges are provisional, and
+> held-out quality evaluation has not been published. Treat it as a defense-in-depth layer, not a
+> compliance guarantee. See [What it does not do](#what-it-does-not-do).
+
+## Why
+
+- **Local first.** PII detection runs in-process with Presidio and spaCy. No content leaves your
+  machine for that check, and the detector model is never downloaded at runtime.
+- **Fails closed.** Required checks that report a violation, an inconclusive judgment, or an error
+  block the request. Setup problems fail before any protected work happens.
+- **Native hooks, not wrappers.** Adapters plug into LangChain middleware, LangGraph nodes and
+  Microsoft Agent Framework middleware, so the checks sit on the real model-submission and
+  final-delivery paths.
+- **Content-free records.** Decisions, reports and exports carry identifiers, outcomes and reason
+  codes, never the text that was checked.
+- **Measured, not assumed.** Evaluate a policy offline against saved answers and get accuracy,
+  precision, recall and false-positive rate, each with its denominator.
+
+<p align="center">
+  <img src="docs/assets/flow.svg" alt="User request passes the input guard, then your agent, then the output guard. A violation at either guard blocks it." width="100%">
+</p>
+
+## Install
+
+Agent Guard is not on PyPI yet. Install from GitHub with the extras you need:
+
+```bash
+pip install "agent-guard[pii] @ git+https://github.com/Rezamiry/agent-guard"
+```
+
+| Extra | Adds |
+|---|---|
+| `pii` | Local PII detection (Presidio, spaCy, tldextract) |
+| `jev` | Semantic checks through the Jev evaluator (HTTPX, AnyIO) |
+| `langchain` | LangChain middleware adapter |
+| `langgraph` | LangGraph node adapter |
+| `microsoft` | Microsoft Agent Framework adapter |
+| `all` | Everything above |
+
+The English PII model is a separate asset and must be installed once:
+
+```bash
+pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+```
+
+## Quickstart
+
+```python
+from agent_guard import Guard
+from agent_guard.checks.pii import LocalPIIDetector
+from agent_guard.core.models import EvaluationContext
+
+guard = Guard(detector=LocalPIIDetector()).prepare()
+try:
+    for request in ("Summarize the report", "Contact jane@example.com"):
+        decision = guard.evaluate_input(EvaluationContext("demo", request))
+        print("allow" if decision.allowed else "block")   # allow, then block
+finally:
+    guard.close()
+```
+
+The default policy requires local PII checks at both the input and the final-answer boundary.
+Use `enforce_input` / `enforce_output` to raise `PolicyViolationError` instead of returning a
+decision, and the `a`-prefixed variants (`aevaluate_input`, `aenforce_output`, ...) for async code.
+
+### With LangChain
+
+```python
+from agent_guard.integrations.langchain import create_guarded_agent
+
+agent = create_guarded_agent(model, tools=[...], guard=guard)
+agent.invoke({"messages": [{"role": "user", "content": "How can I help you today?"}]})
+```
+
+A blocked request raises `PolicyViolationError` with a stable `reason_code`. Runnable versions
+for each framework live in [`examples/`](examples).
+
+## Policies
+
+A `PolicySet` is an ordered list of checks, each bound to the input or output boundary and marked
+required or optional.
+
+```python
+from agent_guard import Boundary, CheckKind, CheckPolicy, PolicySet
+
+policy = PolicySet(
+    id="support-bot-v1",
+    checks=(
+        CheckPolicy("pii_input", CheckKind.PII, Boundary.INPUT),
+        CheckPolicy("injection", CheckKind.PROMPT_INJECTION, Boundary.INPUT),
+        CheckPolicy("pii_output", CheckKind.PII, Boundary.OUTPUT),
+        CheckPolicy("grounded", CheckKind.GROUNDEDNESS, Boundary.OUTPUT),
+        CheckPolicy("relevant", CheckKind.RELEVANCE, Boundary.OUTPUT, required=False),
+    ),
+)
+```
+
+| Check kind | Runs | Needs |
+|---|---|---|
+| `PII` | locally | `pii` extra and the spaCy model |
+| `PROMPT_INJECTION`, `CONTENT_SAFETY`, `RELEVANCE`, `GROUNDEDNESS`, `CUSTOM` | through an evaluator | `jev` extra and a credential |
+
+- A **required** check that finds a violation, is inconclusive, or errors blocks.
+- An **optional** check records the outcome and continues if every required check permits.
+  Making PII optional lets content with a local finding be processed, which lowers privacy
+  protection. Use it only when you mean to.
+- Every boundary with an enabled check must also have an enabled local PII check.
+- `PolicySet.settings_id` identifies the non-secret settings in records and evaluations, so runs
+  can be compared without disclosing custom criterion text. Change `criteria_revision` when you
+  change that text.
+
+## Semantic checks
+
+Semantic checks are off by default. To enable them, pass an evaluator:
+
+```python
+from agent_guard.providers.jev import JevEvaluator
+
+guard = Guard(policy, detector=LocalPIIDetector(),
+              evaluator=JevEvaluator(credential="...")).prepare()
+```
+
+Content is sent to the evaluator only after the local PII check has passed. Groundedness needs
+identified evidence (`EvidenceItem`), and only retrieved passages count as evidence. Chat history
+never does. You can also supply any object with an
+`evaluate(check, context)` method, which is how the examples run offline.
+
+## Evaluate a policy offline
+
+Read versioned UTF-8 JSONL with a supplied candidate answer, run the policy over it, and export
+content-free JSON and a CSV summary. Accuracy, precision, recall and false-positive rate use only
+examples with independent labels, and each is reported with its denominator. A ratio with no
+denominator is *unknown*, never zero. See
+[`examples/offline_evaluation.py`](examples/offline_evaluation.py).
+
+## Examples
+
+| Example | Shows |
+|---|---|
+| [`core_input.py`](examples/core_input.py) | Safe and blocked input |
+| [`core_output.py`](examples/core_output.py) | Final answer with evidence, and a permitted refusal |
+| [`policies.py`](examples/policies.py) | Required vs optional checks, sanitized failures |
+| [`offline_evaluation.py`](examples/offline_evaluation.py) | Saved-answer evaluation and reports |
+| [`langchain_agent.py`](examples/langchain_agent.py) | Direct, retrieval and tool-calling agents |
+| [`langgraph_agent.py`](examples/langgraph_agent.py) | Guarded nodes in a compiled graph |
+| [`microsoft_agent.py`](examples/microsoft_agent.py) | Chat and agent middleware |
+
+## What it does not do
+
+- It guards the boundaries you place it on. It does not intercept arbitrary private prompt
+  assembly inside a framework.
+- A blocked final answer is withheld, but model cost and tool effects that already happened are
+  not reversed.
+- Streaming, images, audio, video and binary attachments are rejected, not inspected.
+- PII detection quality, and semantic quality, are not yet independently measured. See
+  [release evidence](docs/release-evidence.md).
+- Limits: 100,000 code points of text, 128 messages, 64 evidence items per request.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [Compatibility](docs/compatibility.md) | Checked versions, supported boundaries, limits |
+| [Release evidence](docs/release-evidence.md) | What has and has not been verified |
+| [Test oracles](docs/testing/oracles.md) | Independent expected results behind the tests |
+| [Traceability](docs/traceability.md) | Requirement to test mapping |
+| [Third-party notices](docs/third_party_notices.md) | Dependency licenses |
+| [Specification](specs/001-agent-guard/spec.md) | Behavior and limits of v1 |
+| [Release notes](RELEASE_NOTES.md) · [Contributing](CONTRIBUTING.md) | |
+
+## Development
 
 ```bash
 uv venv .venv --python 3.12
 uv sync --locked --python .venv/bin/python --all-extras --group dev
-.venv/bin/python -m pytest -q
-```
-
-The required `en_core_web_lg==3.8.0` detector model is a separate asset. Provision it into
-`.venv` before preparing `LocalPIIDetector`:
-
-```bash
 uv pip install --python .venv/bin/python \
   https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+
+.venv/bin/python -m pytest -q
+.venv/bin/python -m ruff check .
+.venv/bin/python -m mypy src/agent_guard
 ```
 
-The detector never downloads that asset at runtime. Semantic checks are disabled by default.
-Enabling one requires an evaluator; making PII optional permits processing after a local finding
-and therefore reduces privacy protection. Full compatibility evidence and an accepted license
-remain release tasks.
+## License
 
-## Local examples
-
-After provisioning the PII model, run the safe and blocked input example, final-answer
-example, policy-monitoring example, and fixed saved-answer example:
-
-```bash
-.venv/bin/python examples/core_input.py
-.venv/bin/python examples/core_output.py
-.venv/bin/python examples/policies.py
-.venv/bin/python examples/offline_evaluation.py
-```
-
-The default policy enables required local PII at input and output, with no external judgment.
-Required violations, inconclusive judgments, and evaluation errors block. Optional checks
-record those outcomes and continue when every required check permits. An optional PII finding
-can therefore allow the protected application to submit the same content; use it only when that
-reduced protection is intended. Invalid setup fails before protected work even for an optional
-check. Explicitly disabled checks (`enabled=False`) do not require or prepare their detector or
-evaluator; enabled checks still require their configured prerequisites. A blocked final answer
-is withheld, but earlier model cost and tool effects are not
-reversed.
-
-`PolicySet.settings_id` identifies the declared non-secret settings in operational and saved
-evaluation records. It includes check order, required/optional status, confidence settings,
-the shared semantic rubric version, and each check's `criteria_revision`. It excludes raw
-custom criterion text and credentials. When changing custom criterion wording, set a new
-non-secret `criteria_revision` so comparisons can distinguish the settings without disclosing
-the wording.
-
-Saved evaluation reads versioned UTF-8 JSONL with a supplied candidate answer; it does not
-generate a replacement. The example exports content-free JSON results and a CSV summary.
-Accuracy, precision, recall, and false-positive rate use only classified examples with
-independent labels; the CSV includes their denominators. Errors, inconclusive judgments, and
-skips are counted separately. If a ratio has no denominator, it is unknown rather than zero.
-Without labels, correctness is unknown. Enabling semantic checks in a saved run can still make
-opt-in provider requests, subject to local PII preflight.
-
-The current native examples are `examples/langchain_agent.py`, `examples/langgraph_agent.py`,
-and `examples/microsoft_agent.py`. Their checked boundaries and unsupported arrangements are
-listed in `docs/compatibility.md`.
+[Apache-2.0](LICENSE). The spaCy model and other dependencies keep their own licenses; see
+[third-party notices](docs/third_party_notices.md).

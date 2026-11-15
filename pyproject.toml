@@ -8,8 +8,28 @@ version = "0.1.0"
 description = "Privacy-first policy checks for Python agents"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{name = "Agent Guard contributors"}]
+keywords = ["ai-agents", "llm", "guardrails", "pii", "privacy", "langchain", "langgraph", "presidio"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
 dependencies = ["pydantic>=2.12.5,<3"]
+
+[project.urls]
+Homepage = "https://github.com/Rezamiry/agent-guard"
+Repository = "https://github.com/Rezamiry/agent-guard"
+Issues = "https://github.com/Rezamiry/agent-guard/issues"
+Changelog = "https://github.com/Rezamiry/agent-guard/blob/main/RELEASE_NOTES.md"
 
 [project.optional-dependencies]
 pii = ["presidio-analyzer==2.2.364", "spacy>=3.8,<3.9", "tldextract>=5,<6"]

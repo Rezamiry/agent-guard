@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="t d"
+     font-family="Inter,Segoe UI,Helvetica,Arial,sans-serif">
+  <title id="t">Where Agent Guard sits in an agent</title>
+  <desc id="d">User input passes the input guard before the model; the model's final answer passes the output guard before delivery. A violation at either guard blocks the request.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#64748b"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#ef4444"/></marker>
+  </defs>
+  <rect width="1200" height="420" rx="16" fill="#0f172a"/>
+
+  <g fill="#1e293b" stroke="#475569" stroke-width="2">
+    <rect x="40"  y="150" width="150" height="80" rx="12"/>
+    <rect x="460" y="150" width="190" height="80" rx="12"/>
+    <rect x="1010" y="150" width="150" height="80" rx="12"/>
+  </g>
+  <g fill="#e2e8f0" font-size="20" text-anchor="middle" font-weight="600">
+    <text x="115" y="196">User request</text>
+    <text x="555" y="190">Your agent</text>
+    <text x="1085" y="196">Answer</text>
+  </g>
+  <text x="555" y="214" fill="#94a3b8" font-size="14" text-anchor="middle">model · tools · retrieval</text>
+
+  <g stroke="#34d399" stroke-width="3" fill="#052e2b">
+    <rect x="250" y="130" width="150" height="120" rx="14"/>
+    <rect x="710" y="130" width="250" height="120" rx="14"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="325" y="165" fill="#34d399" font-size="18" font-weight="700">INPUT GUARD</text>
+    <text x="325" y="195" fill="#cbd5e1" font-size="14">PII (local)</text>
+    <text x="325" y="215" fill="#cbd5e1" font-size="14">prompt injection*</text>
+    <text x="835" y="165" fill="#34d399" font-size="18" font-weight="700">OUTPUT GUARD</text>
+    <text x="835" y="195" fill="#cbd5e1" font-size="14">PII (local)</text>
+    <text x="835" y="215" fill="#cbd5e1" font-size="14">groundedness* · relevance*</text>
+  </g>
+
+  <g stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#a)">
+    <path d="M190 190H248"/><path d="M400 190H458"/><path d="M650 190H708"/><path d="M960 190H1008"/>
+  </g>
+
+  <g stroke="#ef4444" stroke-width="3" fill="none" stroke-dasharray="7 6" marker-end="url(#r)">
+    <path d="M325 250V320"/><path d="M835 250V320"/>
+  </g>
+  <g fill="#450a0a" stroke="#ef4444" stroke-width="2">
+    <rect x="215" y="322" width="220" height="56" rx="12"/>
+    <rect x="725" y="322" width="220" height="56" rx="12"/>
+  </g>
+  <g fill="#fecaca" font-size="16" text-anchor="middle" font-weight="600">
+    <text x="325" y="356">Blocked before the model</text>
+    <text x="835" y="356">Answer withheld</text>
+  </g>
+  <text x="40" y="60" fill="#e2e8f0" font-size="22" font-weight="700">Two boundaries, one policy</text>
+  <text x="40" y="88" fill="#94a3b8" font-size="15">* optional semantic checks, evaluated by a separately configured Jev evaluator</text>
+</svg>
