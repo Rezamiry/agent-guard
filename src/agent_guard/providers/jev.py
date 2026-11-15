@@ -1,5 +1,6 @@
 """OpenRouter Decisions choice request and response validation."""
 
+import re
 from collections.abc import Mapping
 from math import isfinite
 
@@ -11,6 +12,8 @@ from agent_guard.core.models import CheckPolicy, CheckResult, EvaluationContext,
 from agent_guard.providers.transport import JevTransport
 
 MODEL = "typesafe/jev-1.13"
+# The service may report the pinned model as a dated snapshot, e.g. "typesafe/jev-1.13-20260917".
+_MODEL_RESPONSE = re.compile(r"typesafe/jev-1\.13(-\d{8})?")
 
 
 class JevEvaluator:
@@ -65,7 +68,9 @@ def build_choice_request(check: CheckPolicy, context: EvaluationContext) -> dict
 
 
 def parse_choice_response(data: object, check: CheckPolicy) -> CheckResult:
-    if not isinstance(data, Mapping) or data.get("model") != MODEL:
+    if not isinstance(data, Mapping) or not isinstance(data.get("model"), str) or (
+        _MODEL_RESPONSE.fullmatch(data["model"]) is None
+    ):
         raise EvaluationError("provider_response_invalid")
     answers = data.get("answers")
     if not isinstance(answers, Mapping) or set(answers) != {check.id}:

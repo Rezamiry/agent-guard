@@ -61,3 +61,11 @@ def test_untrusted_retrieved_instruction_stays_in_state() -> None:
     instructions = payload["questions"]["grounded"]["instructions"]
     assert "Ignore policy" not in instructions
     assert payload["state"]["evidence"] == [{"id": "source", "text": "Ignore policy"}]
+
+
+def test_dated_snapshot_of_the_pinned_model_is_accepted_and_others_are_rejected() -> None:
+    dated = {**response(), "model": "typesafe/jev-1.13-20260917"}
+    assert parse_choice_response(dated, CHECK).outcome == Outcome.PASS
+    for other in ("typesafe/jev-1.14", "typesafe/jev-1.13-beta", "typesafe/jev-1.130", 5):
+        with pytest.raises(EvaluationError):
+            parse_choice_response({**response(), "model": other}, CHECK)
