@@ -69,3 +69,24 @@ def test_dated_snapshot_of_the_pinned_model_is_accepted_and_others_are_rejected(
     for other in ("typesafe/jev-1.14", "typesafe/jev-1.13-beta", "typesafe/jev-1.130", 5):
         with pytest.raises(EvaluationError):
             parse_choice_response({**response(), "model": other}, CHECK)
+
+
+def test_alternative_model_request_and_snapshot_response_accepted() -> None:
+    context = EvaluationContext("req", "Query", candidate_answer="Answer")
+    payload = build_choice_request(CHECK, context, model="google/gemini-decision-1")
+    assert payload["model"] == "google/gemini-decision-1"
+
+    exact = {"model": "google/gemini-decision-1", "answers": {"relevance": {"type": "choice", "choice": "pass", "confidence": 0.95}},
+             "usage": {"input_tokens": 12, "output_tokens": 1}}
+    dated = {**exact, "model": "google/gemini-decision-1-20261101"}
+
+    assert parse_choice_response(exact, CHECK, expected_model="google/gemini-decision-1").outcome == Outcome.PASS
+    res = parse_choice_response(dated, CHECK, expected_model="google/gemini-decision-1")
+    assert res.outcome == Outcome.PASS
+    assert res.evaluator == "google/gemini-decision-1-20261101"
+
+    # Mismatched model must be rejected
+    mismatched = {**exact, "model": "typesafe/jev-1.13"}
+    with pytest.raises(EvaluationError) as err:
+        parse_choice_response(mismatched, CHECK, expected_model="google/gemini-decision-1")
+    assert err.value.reason_code == "provider_response_invalid"
