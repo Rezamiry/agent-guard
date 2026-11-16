@@ -140,16 +140,68 @@ policy = PolicySet(
 Semantic checks are off by default. To enable them, pass an evaluator:
 
 ```python
-from agent_guard.providers.jev import JevEvaluator
+from agent_guard.providers import OpenRouterDecisionEvaluator
 
+# Uses AGENT_GUARD_DECISION_MODEL environment variable or defaults to typesafe/jev-1.13
 guard = Guard(policy, detector=LocalPIIDetector(),
-              evaluator=JevEvaluator(credential="...")).prepare()
+              evaluator=OpenRouterDecisionEvaluator(credential="...")).prepare()
+
+# Or specify the model explicitly in code:
+evaluator = OpenRouterDecisionEvaluator(credential="...", model="google/gemini-decision-1")
 ```
+
+*(Note: `JevEvaluator` from `agent_guard.providers.jev` remains available as a fully backwards-compatible alias.)*
 
 Content is sent to the evaluator only after the local PII check has passed. Groundedness needs
 identified evidence (`EvidenceItem`), and only retrieved passages count as evidence. Chat history
 never does. You can also supply any object with an
 `evaluate(check, context)` method, which is how the examples run offline.
+
+### Decision model configuration
+
+The decision model evaluates structured `choice` questions and returns typed decisions (`pass` or `violation`) with calibrated confidence scores.
+
+Configure the model via:
+1. **Environment variable** (convenient for deployments and container environments):
+   ```bash
+   export AGENT_GUARD_DECISION_MODEL="google/gemini-decision-1"
+   # or the fallback:
+   export DECISION_MODEL="google/gemini-decision-1"
+   ```
+2. **Constructor argument** (overrides environment variables):
+   ```python
+   evaluator = OpenRouterDecisionEvaluator(credential="...", model="cloudflare/clef-flash")
+   ```
+If neither is specified, the default model is `typesafe/jev-1.13`.
+
+### Supported OpenRouter decision models
+
+Agent Guard supports specialized decision models available on OpenRouter's Decisions API (`/api/alpha/decisions`):
+
+| Model ID | Provider | Modality | Best For / Characteristics |
+|---|---|---|---|
+| `typesafe/jev-1.13` *(Default)* | TypeSafe | Text | Pinned baseline; calibrated policy judgment & prompt injection defense |
+| `typesafe/jev-1.14` | TypeSafe | Text | Updated reasoning; enhanced calibration on borderline rubrics |
+| `google/gemini-decision-1` | Google | Text / Multimodal | High throughput, low latency, expansive state context |
+| `perplexity/decider-v1.2` | Perplexity | Text | Groundedness and factual relevance evaluation |
+| `perplexity/decider-flash-v1.3` | Perplexity | Text | Ultra-low latency decision model for real-time guardrails |
+| `cloudflare/clef-flash` | Cloudflare | Text | Fast edge decision model; cost-efficient preflight gating |
+| `parallel/decisions-fast` | Parallel | Text | Fast classification, prompt injection, and routing |
+| `nace-ai/drex-max` | Nace AI | Text | Complex policy rules and multi-step reasoning |
+| `nace-ai/drex-v2.0` | Nace AI | Text | Enhanced multi-step decision model |
+| `liquid/d1` | Liquid AI | Text | Efficient linear-state evaluation |
+| `openai/gpt-6-luna-decisions` | OpenAI | Text | Calibrated decision model on OpenRouter Decisions |
+| `heygen/decision-1` | HeyGen | Text | Structured policy and routing decision model |
+
+*Any valid `vendor/model-name` identifier hosted on OpenRouter's Decisions API is supported.*
+
+### Roadmap: Alternative decision model providers
+
+Agent Guard is designed with provider-agnostic semantic evaluation in mind. While OpenRouter provides access to a wide variety of decision models under a unified endpoint, native direct providers are planned:
+
+- **OpenAI (`OpenAIEvaluator`)**: Direct integration using OpenAI Structured Outputs (`response_format` with strict JSON Schema) targeting models like `gpt-4o-mini` and `gpt-4o`.
+- **Google Gemini (`GeminiEvaluator`)**: Direct integration with Gemini API and Vertex AI using controlled generation (`response_schema` / `response_mime_type="application/json"`) on `gemini-2.0-flash`.
+- **Anthropic Claude (`AnthropicEvaluator`)**: Direct integration with the Anthropic Messages API using forced tool calling (`tool_choice={"type": "tool", "name": "record_decision"}`) on `claude-3-5-haiku-20241022`.
 
 ## Evaluate a policy offline
 
