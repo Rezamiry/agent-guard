@@ -1,6 +1,15 @@
 # Release notes
 
-## 0.1.0 (proposed; unreleased)
+## 0.1.1
+
+- Accepts dated snapshots of the requested decision model in responses (for example
+  `typesafe/jev-1.13-20260917`); 0.1.0 rejected them as `provider_response_invalid`.
+- Configurable decision model via `AGENT_GUARD_DECISION_MODEL`.
+- Opt-in `AGENT_GUARD_TRACE_DECISIONS=1` logs each Decisions exchange (state, question,
+  per-choice probabilities) to stderr as `JEV_DECISION {json}`. It writes raw content to logs;
+  leave it off in production.
+
+## 0.1.0 (superseded by 0.1.1)
 
 This is the first proposed Agent Guard release. It adds local PII checks at input and
 final-answer boundaries, optional semantic checks through a separately configured Jev

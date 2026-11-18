@@ -24,7 +24,7 @@ personal data **on your machine**, applies a policy you declare, and **blocks** 
 answer when the policy says so. Optional semantic checks (prompt injection, groundedness,
 relevance) run through a separately configured evaluator, only after the local PII check passes.
 
-> **Status: alpha (0.1.0, unreleased).** The API and compatibility ranges are provisional, and
+> **Status: alpha (0.1.1).** The API and compatibility ranges are provisional, and
 > held-out quality evaluation has not been published. Treat it as a defense-in-depth layer, not a
 > compliance guarantee. See [What it does not do](#what-it-does-not-do).
 

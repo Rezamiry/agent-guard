@@ -1,7 +1,10 @@
 """OpenRouter Decisions choice request and response validation."""
 
+import json
+import logging
 import os
 import re
+import sys
 from collections.abc import Mapping
 from math import isfinite
 
@@ -85,6 +88,38 @@ SUPPORTED_DECISION_MODELS: dict[str, dict[str, str]] = {
 }
 
 
+TRACE_ENV = "AGENT_GUARD_TRACE_DECISIONS"
+_trace_logger = logging.getLogger("agent_guard.decisions")
+
+
+def _trace_decision(payload: dict[str, object], data: object) -> None:
+    """Opt-in debug trace of each Decisions exchange.
+
+    Off unless AGENT_GUARD_TRACE_DECISIONS is truthy. It logs the raw request state (question,
+    candidate answer, evidence) and the raw choice probabilities, so enable it only where
+    sending that content to your logs is acceptable.
+    """
+    if os.getenv(TRACE_ENV, "").strip().lower() not in ("1", "true", "yes", "on"):
+        return
+    if not _trace_logger.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        _trace_logger.addHandler(handler)
+        _trace_logger.setLevel(logging.INFO)
+        _trace_logger.propagate = False
+    questions = payload.get("questions")
+    answers = data.get("answers") if isinstance(data, Mapping) else None
+    record = {
+        "model_requested": payload.get("model"),
+        "model_returned": data.get("model") if isinstance(data, Mapping) else None,
+        "state": payload.get("state"),
+        "questions": questions,
+        "answers": answers,
+        "usage": data.get("usage") if isinstance(data, Mapping) else None,
+    }
+    _trace_logger.info("JEV_DECISION %s", json.dumps(record, ensure_ascii=False, default=str))
+
+
 def resolve_decision_model(model: str | None = None) -> str:
     if model is not None:
         candidate = model.strip()
@@ -124,11 +159,13 @@ class OpenRouterDecisionEvaluator:
     async def aevaluate(self, check: CheckPolicy, context: EvaluationContext) -> CheckResult:
         payload = build_choice_request(check, context, model=self.model)
         data = await self.transport.apost(payload)
+        _trace_decision(payload, data)
         return parse_choice_response(data, check, expected_model=self.model)
 
     def evaluate(self, check: CheckPolicy, context: EvaluationContext) -> CheckResult:
         payload = build_choice_request(check, context, model=self.model)
         data = self.transport.post(payload)
+        _trace_decision(payload, data)
         return parse_choice_response(data, check, expected_model=self.model)
 
     async def aclose(self) -> None:
